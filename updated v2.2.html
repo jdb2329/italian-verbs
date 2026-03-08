@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Italiano: Master Edition v2.2</title>
+    <style>
+        :root { --ita-green: #008C45; --ita-white: #F4F5F0; --ita-red: #CD212A; --dark-blue: #2d3436; }
+        * { box-sizing: border-box; }
+        body { 
+            font-family: 'Helvetica Neue', Arial, sans-serif; display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; min-height: 100vh; 
+            background-color: var(--ita-white); margin: 0; padding: 15px;
+            border-top: 8px solid var(--ita-green); border-bottom: 8px solid var(--ita-red);
+        }
+        #stats { margin-bottom: 10px; font-weight: bold; color: var(--dark-blue); font-size: 0.8em; }
+        .nav-section { width: 100%; max-width: 400px; display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px; }
+        .btn-group { display: flex; gap: 5px; width: 100%; }
+        .toggle-btn { 
+            flex: 1; padding: 10px 2px; background: white; color: #555; border: 1px solid #ccc; 
+            border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 0.65em; 
+        }
+        .active-mode { background: var(--ita-green); color: white; border-color: var(--ita-green); }
+        .active-tense { background: var(--dark-blue); color: white; border-color: var(--dark-blue); }
+        
+        #card { 
+            width: 100%; max-width: 400px; min-height: 520px; background: white; border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08); display: flex; flex-direction: column; 
+            align-items: center; padding: 15px 20px 25px; border: 1px solid #eee; position: relative;
+            overflow: hidden;
+        }
+
+        #progress-container { width: 100%; height: 6px; background: #eee; position: absolute; top: 0; left: 0; }
+        #progress-fill { width: 0%; height: 100%; background: var(--ita-green); transition: width 0.5s ease-in-out; }
+
+        #selection-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content { background: white; width: 100%; max-width: 400px; max-height: 85vh; border-radius: 15px; padding: 20px; overflow-y: auto; }
+        .preset-area { border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 15px; text-align: left;}
+        .save-box { display: flex; gap: 5px; margin-top: 10px; }
+        .save-box input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+        .preset-item { display: inline-flex; align-items: center; background: #e2e8f0; border-radius: 4px; margin: 4px; overflow: hidden; }
+        .preset-btn { background: none; border: none; padding: 6px 10px; font-size: 0.8em; cursor: pointer; font-weight: bold; }
+        .del-btn { background: #cbd5e0; border: none; padding: 6px 8px; cursor: pointer; color: #718096; font-weight: bold; }
+        .verb-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #f9f9f9; text-align: left;}
+        .clear-link { font-size: 0.7em; color: var(--ita-red); cursor: pointer; float: right; margin-top: 4px; }
+
+        h2 { color: var(--dark-blue); margin: 15px 0 0; font-size: 1.8em; border-bottom: 2px solid var(--ita-green); width: 100%; text-align: center; }
+        .tense-display { font-size: 0.8em; color: #666; font-weight: bold; margin-top: 5px; text-transform: uppercase; }
+        .audio-btn { background: #f8f9fa; border: 1px solid #ddd; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; margin-top: 10px; font-size: 1.2em; }
+        .prompt-text { font-size: 1.4em; margin: 20px 0; color: #333; text-align: center; }
+        .highlight { color: var(--ita-red); font-weight: bold; border-bottom: 2px solid #ddd; }
+        #quiz-options { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+        .quiz-btn { padding: 15px 5px; border: 2px solid #eee; border-radius: 10px; background: white; font-weight: bold; font-size: 0.95em; }
+        .correct { background: var(--ita-green) !important; color: white; }
+        .wrong { background: var(--ita-red) !important; color: white; }
+        .primary-btn { padding: 16px; background: var(--dark-blue); color: white; width: 100%; margin-top: 20px; border-radius: 10px; border: none; font-weight: bold; font-size: 1.1em; cursor: pointer; }
+        .focus-btn { background: #6c757d; font-size: 0.8em; padding: 8px; }
+        .reset-prog-btn { background: #cbd5e0; color: #4a5568; font-size: 0.7em; margin-top: 20px; padding: 10px; }
+        #feedback { margin-top: 15px; font-weight: 900; color: var(--ita-green); height: 20px; font-size: 0.9em; }
+        .conjugation-row { display: flex; justify-content: space-between; width: 100%; gap: 15px; margin-top: 10px; }
+        .table-col { flex: 1; display: flex; flex-direction: column; gap: 12px; text-align: left; }
+    </style>
+</head>
+<body>
+
+    <div id="stats">STREAK: <span id="streak">0</span> | <span id="pool-info">Full List</span></div>
+
+    <div class="nav-section">
+        <div class="btn-group">
+            <button class="toggle-btn" id="modeA" onclick="setMode('A')">TABLE</button>
+            <button class="toggle-btn" id="modeB" onclick="setMode('B')">FLASH</button>
+            <button class="toggle-btn" id="modeC" onclick="setMode('C')">QUIZ</button>
+        </div>
+        <div class="btn-group">
+            <button class="toggle-btn" id="tensePres" onclick="setTense('presente')">PRES</button>
+            <button class="toggle-btn" id="tensePass" onclick="setTense('passato')">P. PROSS</button>
+            <button class="toggle-btn" id="tenseImp" onclick="setTense('imperfetto')">IMPERF</button>
+            <button class="toggle-btn" id="tenseFut" onclick="setTense('futuro')">FUT</button>
+        </div>
+        <button class="primary-btn focus-btn" onclick="toggleModal()">🎯 MANAGE FOCUS SETS</button>
+    </div>
+
+    <div id="card">
+        <div id="progress-container"><div id="progress-fill"></div></div>
+        <h2 id="verb-display">...</h2>
+        <div class="tense-display" id="tense-label">Presente</div>
+        <button class="audio-btn" onclick="speakCurrent()">🔊</button>
+        <div id="prompt-area" class="prompt-text"><span id="subject-text">Io</span> <span class="highlight" id="verb-blank">____</span></div>
+        <div id="answer-area" style="display: none; width: 100%;">
+            <div id="table-view" class="conjugation-row">
+                <div class="table-col" id="col-singular"></div>
+                <div class="table-col" id="col-plural"></div>
+            </div>
+            <div id="single-view" style="font-size: 1.8em; color: var(--ita-green); font-weight: 900; margin-top: 15px;"></div>
+        </div>
+        <div id="quiz-options" style="display: none;"></div>
+        <div id="feedback"></div>
+        <button class="primary-btn" onclick="handleMainAction()" id="main-btn">SHOW ANSWER</button>
+    </div>
+
+    <div id="selection-modal">
+        <div class="modal-content">
+            <div class="preset-area">
+                <h4 style="margin:0">Saved Focus Sets:</h4>
+                <div id="preset-list" style="margin-top:10px"></div>
+                <div class="save-box">
+                    <input type="text" id="set-name" placeholder="Name this set...">
+                    <button class="toggle-btn active-tense" onclick="saveCurrentSet()" style="flex:0.5">Save</button>
+                </div>
+            </div>
+            <div style="text-align:left">
+                <span class="clear-link" onclick="clearSelection()">Clear Selection</span>
+                <h4 style="margin:0">Verbs to include:</h4>
+                <div id="verb-checklist"></div>
+            </div>
+            <button class="primary-btn reset-prog-btn" onclick="resetMastery()">🔄 RESET PROGRESS BAR ONLY</button>
+            <button class="primary-btn" onclick="toggleModal()">Close & Study</button>
+        </div>
+    </div>
+
+    <script>
+        const verbs = [
+            { inf: "Aiutare (Help)", presente: {io: "aiuto", tu: "aiuti", lui: "aiuta", noi: "aiutiamo", voi: "aiutate", loro: "aiutano"}, passato: {io: "ho aiutato", tu: "hai aiutato", lui: "ha aiutato", noi: "abbiamo aiutato", voi: "avete aiutato", loro: "hanno aiutato"}, imperfetto: {io: "aiutavo", tu: "aiutavi", lui: "aiutava", noi: "aiutavamo", voi: "aiutavate", loro: "aiutavano"}, futuro: {io: "aiuterò", tu: "aiuterai", lui: "aiuterà", noi: "aiuteremo", voi: "aiuterete", loro: "aiuteranno"} },
+            { inf: "Andare (Go)", presente: { io: "vado", tu: "vai", lui: "va", noi: "andiamo", voi: "andate", loro: "vanno" }, passato: { io: "sono andato", tu: "sei andato", lui: "è andato", noi: "siamo andati", voi: "siete andati", loro: "sono andati" }, imperfetto: { io: "andavo", tu: "andavi", lui: "andava", noi: "andavamo", voi: "andavate", loro: "andavano" }, futuro: {io: "andrò", tu: "andrai", lui: "andrà", noi: "andremo", voi: "andrete", loro: "andranno"} },
+            { inf: "Avere (Have)", presente: { io: "ho", tu: "hai", lui: "ha", noi: "abbiamo", voi: "avete", loro: "hanno" }, passato: { io: "ho avuto", tu: "hai avuto", lui: "ha avuto", noi: "abbiamo avuto", voi: "avete avuto", loro: "hanno avuto" }, imperfetto: { io: "avevo", tu: "avevi", lui: "aveva", noi: "avevamo", voi: "avevate", loro: "avevano" }, futuro: {io: "avrò", tu: "avrai", lui: "avrà", noi: "avremo", voi: "avrete", loro: "avranno"} },
+            { inf: "Bere (Drink)", presente: { io: "bevo", tu: "bevi", lui: "beve", noi: "beviamo", voi: "bevete", loro: "bevono" }, passato: { io: "ho bevuto", tu: "hai bevuto", lui: "ha bevuto", noi: "abbiamo bevuto", voi: "avete bevuto", loro: "hanno bevuto" }, imperfetto: { io: "bevevo", tu: "bevevi", lui: "beveva", noi: "bevevamo", voi: "bevevate", loro: "bevevano" }, futuro: {io: "berrò", tu: "berrai", lui: "berrà", noi: "berremo", voi: "berrete", loro: "berranno"} },
+            { inf: "Capire (Understand)", presente: { io: "capisco", tu: "capisci", lui: "capisce", noi: "capiamo", voi: "capite", loro: "capiscono" }, passato: { io: "ho capito", tu: "hai capito", lui: "ha capito", noi: "abbiamo capito", voi: "avete capito", loro: "hanno capito" }, imperfetto: { io: "capivo", tu: "capivi", lui: "capiva", noi: "capivamo", voi: "capivate", loro: "capivano" }, futuro: {io: "capirò", tu: "capirai", lui: "capirà", noi: "capiremo", voi: "capirete", loro: "capiranno"} },
+            { inf: "Conoscere (Know)", presente: { io: "conosco", tu: "conosci", lui: "conosce", noi: "conosciamo", voi: "conoscete", loro: "conoscono" }, passato: { io: "ho conosciuto", tu: "hai conosciuto", lui: "ha conosciuto", noi: "abbiamo conosciuto", voi: "avete conosciuto", loro: "hanno conosciuto" }, imperfetto: { io: "conoscevo", tu: "conoscevi", lui: "conosceva", noi: "conoscevamo", voi: "conoscevate", loro: "conoscevano" }, futuro: {io: "conoscerò", tu: "conoscerai", lui: "conoscerà", noi: "conosceremo", voi: "conoscerete", loro: "conosceranno"} },
+            { inf: "Dire (Say/Tell)", presente: { io: "dico", tu: "dici", lui: "dice", noi: "diciamo", voi: "dite", loro: "dicono" }, passato: { io: "ho detto", tu: "hai detto", lui: "ha detto", noi: "abbiamo detto", voi: "avete detto", loro: "hanno detto" }, imperfetto: { io: "dicevo", tu: "dicevi", lui: "diceva", noi: "dicevamo", voi: "dicevate", loro: "dicevano" }, futuro: {io: "dirò", tu: "dirai", lui: "dirà", noi: "diremo", voi: "direte", loro: "diranno"} },
+            { inf: "Dovere (Must)", presente: { io: "devo", tu: "devi", lui: "deve", noi: "dobbiamo", voi: "dovete", loro: "devono" }, passato: { io: "ho dovuto", tu: "hai dovuto", lui: "ha dovuto", noi: "abbiamo dovuto", voi: "avete dovuto", loro: "hanno dovuto" }, imperfetto: { io: "dovevo", tu: "dovevi", lui: "doveva", noi: "dovevamo", voi: "dovevate", loro: "dovevano" }, futuro: {io: "dovrò", tu: "dovrai", lui: "dovrà", noi: "dovremo", voi: "dovrete", loro: "dovranno"} },
+            { inf: "Essere (Be)", presente: { io: "sono", tu: "sei", lui: "è", noi: "siamo", voi: "siete", loro: "sono" }, passato: { io: "sono stato", tu: "sei stato", lui: "è stato", noi: "siamo stati", voi: "siete stati", loro: "sono stati" }, imperfetto: { io: "ero", tu: "eri", lui: "era", noi: "eravamo", voi: "eravate", loro: "erano" }, futuro: {io: "sarò", tu: "sarai", lui: "sarà", noi: "saremo", voi: "sarete", loro: "saranno"} },
+            { inf: "Fare (Do/Make)", presente: { io: "faccio", tu: "fai", lui: "fa", noi: "facciamo", voi: "fate", loro: "fanno" }, passato: { io: "ho fatto", tu: "hai fatto", lui: "ha fatto", noi: "abbiamo fatto", voi: "avete fatto", loro: "hanno fatto" }, imperfetto: { io: "facevo", tu: "facevi", lui: "faceva", noi: "facevamo", voi: "facevate", loro: "facevano" }, futuro: {io: "farò", tu: "farai", lui: "farà", noi: "faremo", voi: "farete", loro: "faranno"} },
+            { inf: "Giocare (Play)", presente: { io: "gioco", tu: "giochi", lui: "gioca", noi: "giochiamo", voi: "giocate", loro: "giocano" }, passato: { io: "ho giocato", tu: "hai giocato", lui: "ha giocato", noi: "abbiamo giocato", voi: "avete giocato", loro: "hanno giocato" }, imperfetto: { io: "giocavo", tu: "giocavi", lui: "giocava", noi: "giocavamo", voi: "giocavate", loro: "giocavano" }, futuro: {io: "giocherò", tu: "giocherai", lui: "giocherà", noi: "giocheremo", voi: "giocherete", loro: "giocheranno"} },
+            { inf: "Leggere (Read)", presente: { io: "leggo", tu: "leggi", lui: "legge", noi: "leggiamo", voi: "leggete", loro: "leggono" }, passato: { io: "ho letto", tu: "hai letto", lui: "ha letto", noi: "abbiamo letto", voi: "avete letto", loro: "hanno letto" }, imperfetto: { io: "leggevo", tu: "leggevi", lui: "leggeva", noi: "leggevamo", voi: "leggevate", loro: "leggevano" }, futuro: {io: "leggerò", tu: "leggerai", lui: "leggerà", noi: "leggeremo", voi: "leggerete", loro: "leggeranno"} },
+            { inf: "Mangiare (Eat)", presente: { io: "mangio", tu: "mangi", lui: "mangia", noi: "mangiamo", voi: "mangiate", loro: "mangiano" }, passato: { io: "ho mangiato", tu: "hai mangiato", lui: "ha mangiato", noi: "abbiamo mangiato", voi: "avete mangiato", loro: "hanno mangiato" }, imperfetto: { io: "mangiavo", tu: "mangiavi", lui: "mangiava", noi: "mangiavamo", voi: "mangiavate", loro: "mangiavano" }, futuro: {io: "mangerò", tu: "mangerai", lui: "mangerà", noi: "mangeremo", voi: "mangerete", loro: "mangeranno"} },
+            { inf: "Parlare (Speak)", presente: { io: "parlo", tu: "parli", lui: "parla", noi: "parliamo", voi: "parlate", loro: "parlano" }, passato: { io: "ho parlato", tu: "hai parlato", lui: "ha parlato", noi: "abbiamo parlato", voi: "avete parlato", loro: "hanno parlato" }, imperfetto: { io: "parlavo", tu: "parlavi", lui: "parlava", noi: "parlavamo", voi: "parlavate", loro: "parlavano" }, futuro: {io: "parlerò", tu: "parlerai", lui: "parlerà", noi: "parleremo", voi: "parlerete", loro: "parleranno"} },
+            { inf: "Potere (Can)", presente: { io: "posso", tu: "puoi", lui: "può", noi: "possiamo", voi: "potete", loro: "possono" }, passato: { io: "ho potuto", tu: "hai potuto", lui: "ha potuto", noi: "abbiamo potuto", voi: "avete potuto", loro: "hanno potuto" }, imperfetto: { io: "potevo", tu: "potevi", lui: "poteva", noi: "potevamo", voi: "potevate", loro: "potevano" }, futuro: {io: "potrò", tu: "potrai", lui: "potrà", noi: "potremo", voi: "potrete", loro: "potranno"} },
+            { inf: "Prendere (Take)", presente: { io: "prendo", tu: "prendi", lui: "prende", noi: "prendiamo", voi: "prendete", loro: "prendono" }, passato: { io: "ho preso", tu: "hai preso", lui: "ha preso", noi: "abbiamo preso", voi: "avete preso", loro: "hanno preso" }, imperfetto: { io: "prendevo", tu: "prendevi", lui: "prendeva", noi: "prendevamo", voi: "prendevate", loro: "prendevano" }, futuro: {io: "prenderò", tu: "prenderai", lui: "prenderà", noi: "prenderemo", voi: "prenderete", loro: "prenderanno"} },
+            { inf: "Ritornare (Return)", presente: { io: "ritorno", tu: "ritorni", lui: "ritorna", noi: "ritorniamo", voi: "ritornate", loro: "ritornano" }, passato: { io: "sono ritornato", tu: "sei ritornato", lui: "è ritornato", noi: "siamo ritornati", voi: "siete ritornati", loro: "sono ritornati" }, imperfetto: { io: "ritornavo", tu: "ritornavi", lui: "ritornava", noi: "ritornavamo", voi: "ritornavate", loro: "ritornavano" }, futuro: {io: "ritornerò", tu: "ritornerai", lui: "ritornerà", noi: "ritorneremo", voi: "ritornerete", loro: "ritorneranno"} },
+            { inf: "Sapere (Know)", presente: { io: "so", tu: "sai", lui: "sa", noi: "sappiamo", voi: "sapete", loro: "sanno" }, passato: { io: "ho saputo", tu: "hai saputo", lui: "ha saputo", noi: "abbiamo saputo", voi: "avete saputo", loro: "hanno saputo" }, imperfetto: { io: "sapevo", tu: "sapevi", lui: "sapeva", noi: "sapevamo", voi: "sapevate", loro: "sapevano" }, futuro: {io: "saprò", tu: "saprai", lui: "saprà", noi: "sapremo", voi: "saprete", loro: "sapranno"} },
+            { inf: "Scrivere (Write)", presente: { io: "scrivo", tu: "scrivi", lui: "scrive", noi: "scriviamo", voi: "scrivete", loro: "scrivono" }, passato: { io: "ho scritto", tu: "hai scritto", lui: "ha scritto", noi: "abbiamo scritto", voi: "avete scritto", loro: "hanno scritto" }, imperfetto: { io: "scrivevo", tu: "scrivevi", lui: "scriveva", noi: "scrivevamo", voi: "scrivevate", loro: "scrivevano" }, futuro: {io: "scriverò", tu: "scriverai", lui: "scriverà", noi: "scriveremo", voi: "scriverete", loro: "scriveranno"} },
+            { inf: "Sentire (Feel/Hear)", presente: { io: "sento", tu: "senti", lui: "sente", noi: "sentiamo", voi: "sentite", loro: "sentono" }, passato: { io: "ho sentito", tu: "hai sentito", lui: "ha sentito", noi: "abbiamo sentito", voi: "avete sentito", loro: "hanno sentito" }, imperfetto: { io: "sentivo", tu: "sentivi", lui: "sentiva", noi: "sentivamo", voi: "sentivate", loro: "sentivano" }, futuro: {io: "sentirò", tu: "sentirai", lui: "sentirà", noi: "sentiremo", voi: "sentirete", loro: "sentiranno"} },
+            { inf: "Trovare (Find)", presente: { io: "trovo", tu: "trovi", lui: "trova", noi: "troviamo", voi: "trovate", loro: "trovano" }, passato: { io: "ho trovato", tu: "hai trovato", lui: "ha trovato", noi: "abbiamo trovato", voi: "avete trovato", loro: "hanno trovato" }, imperfetto: { io: "trovavo", tu: "trovavi", lui: "trovava", noi: "trovavamo", voi: "trovavate", loro: "trovavano" }, futuro: {io: "troverò", tu: "troverai", lui: "troverà", noi: "troveremo", voi: "troverete", loro: "troveranno"} },
+            { inf: "Uscire (Go out)", presente: { io: "esco", tu: "esci", lui: "esce", noi: "usciamo", voi: "uscite", loro: "escono" }, passato: { io: "sono uscito", tu: "sei uscito", lui: "è uscito", noi: "siamo usciti", voi: "siete usciti", loro: "sono usciti" }, imperfetto: { io: "uscivo", tu: "uscivi", lui: "usciva", noi: "uscivamo", voi: "uscivate", loro: "uscivano" }, futuro: {io: "uscirò", tu: "uscirai", lui: "uscirà", noi: "usciremo", voi: "uscirete", loro: "usciranno"} },
+            { inf: "Vedere (See)", presente: { io: "vedo", tu: "vedi", lui: "vede", noi: "vediamo", voi: "vedete", loro: "vedono" }, passato: { io: "ho visto", tu: "hai visto", lui: "ha visto", noi: "abbiamo visto", voi: "avete visto", loro: "hanno visto" }, imperfetto: { io: "vedevo", tu: "vedevi", lui: "vedeva", noi: "vedevamo", voi: "vedevate", loro: "vedevano" }, futuro: {io: "vedrò", tu: "vedrai", lui: "vedrà", noi: "vedremo", voi: "vedrete", loro: "vedranno"} },
+            { inf: "Vendere (Sell)", presente: { io: "vendo", tu: "vendi", lui: "vende", noi: "vendiamo", voi: "vendete", loro: "vendono" }, passato: { io: "ho venduto", tu: "hai venduto", lui: "ha venduto", noi: "abbiamo venduto", voi: "avete venduto", loro: "hanno venduto" }, imperfetto: { io: "vendevo", tu: "vendevi", lui: "vendeva", noi: "vendevamo", voi: "vendevate", loro: "vendevano" }, futuro: {io: "venderò", tu: "venderai", lui: "venderà", noi: "venderemo", voi: "venderete", loro: "venderanno"} },
+            { inf: "Venire (Come)", presente: { io: "vengo", tu: "vieni", lui: "viene", noi: "veniamo", voi: "venite", loro: "vengono" }, passato: { io: "sono venuto", tu: "sei venuto", lui: "è venuto", noi: "siamo venuti", voi: "siete venuti", loro: "sono venuti" }, imperfetto: { io: "venivo", tu: "venivi", lui: "veniva", noi: "venivamo", voi: "venivate", loro: "venivano" }, futuro: {io: "verrò", tu: "verrai", lui: "verrà", noi: "verremo", voi: "verrete", loro: "verranno"} },
+            { inf: "Volere (Want)", presente: { io: "voglio", tu: "vuoi", lui: "vuole", noi: "vogliamo", voi: "volete", loro: "vogliono" }, passato: { io: "ho voluto", tu: "hai voluto", lui: "ha voluto", noi: "abbiamo voluto", voi: "avete voluto", loro: "hanno voluto" }, imperfetto: { io: "volevo", tu: "volevi", lui: "voleva", noi: "volevamo", voi: "volevate", loro: "volevano" }, futuro: {io: "vorrò", tu: "vorrai", lui: "vorrà", noi: "vorremo", voi: "vorrete", loro: "vorranno"} }
+        ];
+
+        let streak = 0, selectedVerbs = [], currentMode = 'A', currentTense = 'presente', currentVerb = {}, currentSub = 'io', savedSets = {}, mastery = {};
+
+        function saveData() { 
+            localStorage.setItem('ita_v22', JSON.stringify({ streak, savedSets, lastMode: currentMode, lastTense: currentTense, mastery })); 
+        }
+        
+        function loadData() {
+            const saved = JSON.parse(localStorage.getItem('ita_v22') || '{}');
+            streak = saved.streak || 0; savedSets = saved.savedSets || {};
+            currentMode = saved.lastMode || 'A'; currentTense = saved.lastTense || 'presente';
+            mastery = saved.mastery || {};
+            document.getElementById('streak').innerText = streak;
+            renderPresetList(); setMode(currentMode); setTense(currentTense);
+        }
+
+        function initChecklist() {
+            const container = document.getElementById('verb-checklist'); container.innerHTML = "";
+            verbs.forEach((v, i) => {
+                const div = document.createElement('div'); div.className = 'verb-item';
+                div.innerHTML = `<input type="checkbox" value="${i}" id="chk-${i}" onchange="updateSelection()"> <span>${v.inf}</span>`;
+                container.appendChild(div);
+            });
+        }
+
+        function clearSelection() {
+            document.querySelectorAll('#verb-checklist input').forEach(c => c.checked = false);
+            updateSelection();
+        }
+
+        function updateSelection() {
+            const checks = document.querySelectorAll('#verb-checklist input:checked');
+            selectedVerbs = Array.from(checks).map(c => verbs[c.value]);
+            document.getElementById('pool-info').innerText = selectedVerbs.length > 0 ? `Focus: ${selectedVerbs.length} verbs` : "Full List";
+            updateProgressBar();
+        }
+
+        function updateProgressBar() {
+            const pool = selectedVerbs.length > 0 ? selectedVerbs : verbs;
+            const totalItems = pool.length * 6;
+            let masteredItems = 0;
+            pool.forEach(v => {
+                const verbKey = v.inf.split(' ')[0];
+                ['io', 'tu', 'lui', 'noi', 'voi', 'loro'].forEach(sub => {
+                    if (mastery[`${verbKey}_${currentTense}_${sub}`]) masteredItems++;
+                });
+            });
+            const percent = (masteredItems / totalItems) * 100;
+            document.getElementById('progress-fill').style.width = Math.min(percent, 100) + '%';
+            if (percent >= 100 && pool.length < verbs.length) document.getElementById('feedback').innerText = "Focus Set Mastered! 🏆";
+        }
+
+        function resetMastery() {
+            if(confirm("Reset the progress bar for all tenses? Your saved sets and streak will be kept.")) {
+                mastery = {}; saveData(); updateProgressBar(); alert("Progress reset!");
+            }
+        }
+
+        function saveCurrentSet() {
+            const name = document.getElementById('set-name').value.trim();
+            if (!name) return alert("Enter a name");
+            const checks = Array.from(document.querySelectorAll('#verb-checklist input:checked')).map(c => c.value);
+            if (checks.length === 0) return alert("Select verbs first");
+            savedSets[name] = checks;
+            saveData(); document.getElementById('set-name').value = ""; renderPresetList();
+        }
+
+        function deleteSet(name) {
+            if(confirm(`Delete set "${name}"?`)) { delete savedSets[name]; saveData(); renderPresetList(); }
+        }
+
+        function renderPresetList() {
+            const list = document.getElementById('preset-list'); list.innerHTML = "";
+            Object.keys(savedSets).forEach(name => {
+                const item = document.createElement('div'); item.className = "preset-item";
+                item.innerHTML = `<button class="preset-btn" onclick="applySet('${name}')">${name}</button><button class="del-btn" onclick="deleteSet('${name}')">×</button>`;
+                list.appendChild(item);
+            });
+        }
+
+        function applySet(name) {
+            const indices = savedSets[name];
+            document.querySelectorAll('#verb-checklist input').forEach(c => c.checked = false);
+            indices.forEach(i => { if(document.getElementById('chk-'+i)) document.getElementById('chk-'+i).checked = true; });
+            updateSelection();
+        }
+
+        function toggleModal() {
+            const m = document.getElementById('selection-modal');
+            m.style.display = m.style.display === 'flex' ? 'none' : 'flex';
+            if (m.style.display === 'none') nextQuestion();
+        }
+
+        function setTense(tense) {
+            currentTense = tense;
+            ['tensePres', 'tensePass', 'tenseImp', 'tenseFut'].forEach(id => document.getElementById(id).classList.remove('active-tense'));
+            const idMap = { presente: 'tensePres', passato: 'tensePass', imperfetto: 'tenseImp', futuro: 'tenseFut' };
+            document.getElementById(idMap[tense]).classList.add('active-tense');
+            document.getElementById('tense-label').innerText = tense.replace('passato', 'Passato Prossimo').replace('futuro', 'Futuro Semplice');
+            saveData(); updateProgressBar(); nextQuestion();
+        }
+
+        function setMode(mode) {
+            currentMode = mode;
+            ['modeA', 'modeB', 'modeC'].forEach(id => document.getElementById(id).classList.remove('active-mode'));
+            document.getElementById('mode' + mode).classList.add('active-mode');
+            saveData(); nextQuestion();
+        }
+
+        function nextQuestion() {
+            const pool = selectedVerbs.length > 0 ? selectedVerbs : verbs;
+            currentVerb = pool[Math.floor(Math.random() * pool.length)];
+            currentSub = ['io', 'tu', 'lui', 'noi', 'voi', 'loro'][Math.floor(Math.random() * 6)];
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('verb-display').innerText = currentVerb.inf;
+            document.getElementById('feedback').innerText = '';
+            document.getElementById('answer-area').style.display = 'none';
+            document.getElementById('quiz-options').style.display = 'none';
+            document.getElementById('prompt-area').style.display = (currentMode === 'A') ? 'none' : 'block';
+            document.getElementById('subject-text').innerText = currentSub.charAt(0).toUpperCase() + (currentSub === 'lui' ? '/Lei' : currentSub.slice(1));
+            if (currentMode === 'C') { document.getElementById('main-btn').style.display = 'none'; setupQuiz(); }
+            else { document.getElementById('main-btn').style.display = 'block'; document.getElementById('main-btn').innerText = "SHOW ANSWER"; }
+        }
+
+        function setupQuiz() {
+            const area = document.getElementById('quiz-options'); area.style.display = 'grid'; area.innerHTML = '';
+            const correct = currentVerb[currentTense][currentSub];
+            let choices = [...new Set(Object.values(currentVerb[currentTense]))].sort(() => 0.5 - Math.random()).slice(0,4);
+            if (!choices.includes(correct)) choices[0] = correct;
+            choices.sort(() => 0.5 - Math.random()).forEach(choice => {
+                const btn = document.createElement('button'); btn.className = 'quiz-btn'; btn.innerText = choice;
+                btn.onclick = () => {
+                    if (choice === correct) {
+                        btn.classList.add('correct'); streak++; document.getElementById('streak').innerText = streak;
+                        document.getElementById('feedback').innerText = "BRAVO!";
+                        const verbKey = currentVerb.inf.split(' ')[0];
+                        mastery[`${verbKey}_${currentTense}_${currentSub}`] = true;
+                        saveData(); updateProgressBar(); setTimeout(nextQuestion, 1000);
+                    } else {
+                        btn.classList.add('wrong'); streak = 0; document.getElementById('streak').innerText = streak;
+                        document.getElementById('feedback').innerText = "RIPROVA!"; saveData();
+                    }
+                };
+                area.appendChild(btn);
+            });
+        }
+
+        function speakCurrent() {
+            const ut = new SpeechSynthesisUtterance(); ut.lang = 'it-IT';
+            const vData = currentVerb[currentTense];
+            if (currentMode === 'A' && document.getElementById('answer-area').style.display !== 'none') {
+                ut.text = `io ${vData.io}, tu ${vData.tu}, lui ${vData.lui}, noi ${vData.noi}, voi ${vData.voi}, loro ${vData.loro}`;
+            } else { ut.text = vData[currentSub]; }
+            window.speechSynthesis.speak(ut);
+        }
+
+        function handleMainAction() {
+            const btn = document.getElementById('main-btn');
+            if (btn.innerText === "NEXT →") return nextQuestion();
+            document.getElementById('answer-area').style.display = 'block';
+            if (currentMode === 'A') {
+                const vData = currentVerb[currentTense];
+                document.getElementById('col-singular').innerHTML = `<div><b>io</b> ${vData.io}</div><div><b>tu</b> ${vData.tu}</div><div><b>lui/lei</b> ${vData.lui}</div>`;
+                document.getElementById('col-plural').innerHTML = `<div><b>noi</b> ${vData.noi}</div><div><b>voi</b> ${vData.voi}</div><div><b>loro</b> ${vData.loro}</div>`;
+                document.getElementById('single-view').style.display = 'none'; document.getElementById('table-view').style.display = 'flex';
+            } else {
+                document.getElementById('single-view').innerText = currentVerb[currentTense][currentSub];
+                document.getElementById('single-view').style.display = 'block'; document.getElementById('table-view').style.display = 'none';
+            }
+            btn.innerText = "NEXT →";
+        }
+
+        initChecklist();
+        loadData();
+    </script>
+</body>
+</html>
